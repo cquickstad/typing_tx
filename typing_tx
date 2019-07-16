@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+from argparse import ArgumentParser
+from time import sleep
+from tempfile import TemporaryDirectory as TempDir
+import tarfile
+from os.path import join, basename
+from base64 import encode, decode
+
+try:
+    import pynput.keyboard
+except ImportError:
+    pass
+
+
+def parse_arguments():
+    ap = ArgumentParser(description="Transfer files by typing.")
+    ap.add_argument('-d', '--decode', action='store_true',
+                    help="Decode a file already typed")
+    ap.add_argument('-s', '--sleep_seconds', type=int, default=7,
+                    help="Amount of sleep time (in seconds) before typing begins")
+    ap.add_argument('-k', '--key_millisecons', type=int, default=4,
+                    help="Number of milliseconds between key strokes")
+    ap.add_argument('-l', '--line_millisecons', type=int, default=10,
+                    help="Number of milliseconds between typing lines")
+    ap.add_argument('file_or_dir', type=str, default="",
+                    help="File or Directory to encode and type or file to decode.")
+    return ap.parse_args()
+
+
+def app(args):
+    if args.decode:
+        base64_file_to_orginal(args)
+    else:
+        type_out_file_or_dir(args)
+
+
+def base64_file_to_orginal(args):
+    print("Decoding '" + args.file_or_dir + "'...")
+    with TempDir() as td:
+        create_file_names(args, td)
+        decode_b64(args)
+        decode_txz(args)
+
+
+def type_out_file_or_dir(args):
+    print("Waiting for", args.sleep_seconds, "seconds...")
+    sleep(args.sleep_seconds)
+    with TempDir() as td:
+        create_file_names(args, td)
+        create_txz(args)
+        create_b64(args)
+        type_out_b64(args)
+
+
+def create_file_names(args, td):
+    args.temp_dir = td
+    args.txz_file_name = join(args.temp_dir, basename(args.file_or_dir) + ".txz")
+    args.b64_file_name = args.txz_file_name + ".b64"
+
+
+def decode_b64(args):
+    with open(args.file_or_dir, 'rb') as fin:
+        with open(args.txz_file_name, 'wb') as fout:
+            print("Converting '" + args.file_or_dir + "' to '" + args.txz_file_name + "'...")
+            decode(fin, fout)
+
+
+def decode_txz(args):
+    with tarfile.open(args.txz_file_name, 'r:xz') as txz:
+        print("Decompressing '" + args.txz_file_name + "'...")
+        txz.extractall()
+
+
+def create_txz(args):
+    with tarfile.open(args.txz_file_name, 'w:xz') as txz:
+        print("Compressing '" + args.file_or_dir + "' to '" + args.txz_file_name + "'...")
+        txz.add(args.file_or_dir)
+
+
+def create_b64(args):
+    with open(args.txz_file_name, 'rb') as fin:
+        with open(args.b64_file_name, 'wb') as fout:
+            print("Converting '" + args.txz_file_name + "' to '" + args.b64_file_name + "'...")
+            encode(fin, fout)
+
+
+def type_out_b64(args):
+    with open(args.b64_file_name, 'r') as f:
+        kbd = pynput.keyboard.Controller()
+        print("Typing out", args.b64_file_name, "...")
+        for line in f:
+            sleep(args.line_millisecons / 1000)
+            for char in line:
+                type_char(args.key_millisecons, kbd, char)
+
+
+def type_char(key_millisecons, kbd, char):
+    if char == '\n':
+        char = pynput.keyboard.Key.enter
+    kbd.press(char)
+    kbd.release(char)
+    sleep(key_millisecons / 1000)
+
+
+if __name__ == '__main__':
+    args = parse_arguments()
+    app(args)
