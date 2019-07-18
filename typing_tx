@@ -8,6 +8,9 @@ import tarfile
 from os.path import join, basename
 from base64 import encode, decode
 
+# The user may want to run this script to decode a received file, yet may not
+# have the ability to install pynput on the remote machine.  Therefore, the
+# script will still run with --decode mode if pynput is not available
 try:
     import pynput.keyboard
 except ImportError:
