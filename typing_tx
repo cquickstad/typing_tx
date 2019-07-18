@@ -18,6 +18,8 @@ def parse_arguments():
     ap = ArgumentParser(description="Transfer files by typing.")
     ap.add_argument('-d', '--decode', action='store_true',
                     help="Decode a file already typed")
+    ap.add_argument('-n', '--no_compress', action='store_true',
+                    help="Don't compress, just type a text file")
     ap.add_argument('-s', '--sleep_seconds', type=int, default=7,
                     help="Amount of sleep time (in seconds) before typing begins")
     ap.add_argument('-k', '--key_millisecons', type=int, default=4,
@@ -49,15 +51,17 @@ def type_out_file_or_dir(args):
     sleep(args.sleep_seconds)
     with TempDir() as td:
         create_file_names(args, td)
-        create_txz(args)
-        create_b64(args)
-        type_out_b64(args)
+        if not args.no_compress:
+            create_txz(args)
+            create_b64(args)
+        type_out_file(args)
 
 
 def create_file_names(args, td):
     args.temp_dir = td
     args.txz_file_name = join(args.temp_dir, basename(args.file_or_dir) + ".txz")
     args.b64_file_name = args.txz_file_name + ".b64"
+    args.typed_file_name = args.file_or_dir if args.no_compress else args.b64_file_name
 
 
 def decode_b64(args):
@@ -86,10 +90,10 @@ def create_b64(args):
             encode(fin, fout)
 
 
-def type_out_b64(args):
-    with open(args.b64_file_name, 'r') as f:
+def type_out_file(args):
+    with open(args.typed_file_name, 'r') as f:
         kbd = pynput.keyboard.Controller()
-        print("Typing out", args.b64_file_name, "...")
+        print("Typing out", args.typed_file_name, "...")
         for line in f:
             sleep(args.line_millisecons / 1000)
             for char in line:

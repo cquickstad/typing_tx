@@ -17,3 +17,5 @@ This script can also decode the characters typed, decompressing them back into t
 The rate of typing can be controlled (-l and -k options) so as to not overflow your connection to the remote machine.
 
 Tha amount of time, in seconds, provided to mouse over and click in an open editor on the remote machine can be adjusted with the -s option
+
+If you just want to type out a text file without compression or conversion, use the -n option.
